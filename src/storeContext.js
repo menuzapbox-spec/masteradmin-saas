@@ -32,7 +32,7 @@ export function useCurrentStore() {
         return
       }
       if (!data) {
-        setState({ store: null, loading: false, error: new Error(`Loja "${slug}" não encontrada.`) })
+        setState({ store: null, loading: false, error: new Error(`Loja \"${slug}\" não encontrada.`) })
         return
       }
       setState({ store: data, loading: false, error: null })

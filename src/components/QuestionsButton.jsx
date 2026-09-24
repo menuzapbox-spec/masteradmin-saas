@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { MessageCircle, X, Truck, Clock3, CreditCard, ShoppingBag, UserRound } from 'lucide-react'
-import { db, collection, addDoc } from '../supabase'
 import whatsappLogo from '../assets/whatsapp-logo.png'
 import { useStoreSettings } from '../data/useStoreSettings'
 
@@ -9,7 +8,8 @@ export default function QuestionsButton({ externalOpen = false, onExternalClose,
   const [open, setOpen] = useState(false)
   const store = useStoreSettings()
   const whatsapp = String(store.whatsapp || store.phone || '').replace(/\D/g, '')
-  const [name, setName] = useState(() => localStorage.getItem('store_name') || '')
+  const storeKey = store.storeId || 'loja'
+  const [name, setName] = useState(() => localStorage.getItem(`store_${storeKey}_customer_name`) || '')
   const [question, setQuestion] = useState('')
   const [sending, setSending] = useState(false)
 
@@ -34,19 +34,19 @@ export default function QuestionsButton({ externalOpen = false, onExternalClose,
     const topicText = topic ? quickTopics.find(([key]) => key === topic)?.[1] : ''
     const msg = `*ATENDIMENTO - ${store.storeName}*\n\n*Cliente:* ${nameValue}\n*Origem:* ${contextLabel}${topicText ? `\n*Assunto:* ${topicText}` : ''}`
     window.open(`https://wa.me/${whatsapp}?text=${encodeURIComponent(msg)}`, '_blank')
-    if (name.trim()) localStorage.setItem('store_name', name.trim())
+    if (name.trim()) localStorage.setItem(`store_${storeKey}_customer_name`, name.trim())
     close()
   }
 
   async function submit(e) {
     e.preventDefault()
     if (!question.trim()) return
+    if (!whatsapp) { alert('O WhatsApp da loja ainda não foi configurado no Admin.'); return }
     setSending(true)
-    const data = { nome: name.trim() || 'Cliente', duvida: question.trim(), respondida: false, data: new Date().toISOString() }
-    try { await addDoc(collection(db, 'duvidas'), data) } catch (err) { console.error('Erro ao salvar dúvida:', err) }
+    const data = { nome: name.trim() || 'Cliente', duvida: question.trim() }
     const msg = `*DÚVIDA - ${store.storeName}*\n\n*Cliente:* ${data.nome}\n*Dúvida:* ${data.duvida}`
     window.open(`https://wa.me/${whatsapp}?text=${encodeURIComponent(msg)}`, '_blank')
-    if (name.trim()) localStorage.setItem('store_name', name.trim())
+    if (name.trim()) localStorage.setItem(`store_${storeKey}_customer_name`, name.trim())
     setQuestion('')
     setSending(false)
     close()

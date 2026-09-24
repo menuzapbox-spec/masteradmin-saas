@@ -94,7 +94,7 @@ export function CartProvider({ children }) {
     return current >= open || current < close
   }, [storeConfig.openingTime, storeConfig.closingTime, storeConfig.storeScheduleEnabled])
 
-  const STORE_OPEN = isWithinStoreHours
+  const STORE_OPEN = (store?.operation_status || 'OPEN') === 'OPEN' && isWithinStoreHours
 
   const deliveryFee = 0
   const total = subtotal + deliveryFee

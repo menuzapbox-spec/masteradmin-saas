@@ -32,10 +32,11 @@ export default function CheckoutModal({ isOpen, onClose }) {
   const store = useStoreSettings()
   const { store: currentStore } = useCurrentStore()
   const whatsapp = String(store.whatsapp || store.phone || '').replace(/\D/g, '')
+  const storeKey = currentStore?.id || 'loja'
 
-  const [name, setName] = useState(() => localStorage.getItem('store_name') || '')
-  const [address, setAddress] = useState(() => localStorage.getItem('store_address') || '')
-  const [reference, setReference] = useState(() => localStorage.getItem('store_ref') || '')
+  const [name, setName] = useState(() => localStorage.getItem(`store_${storeKey}_customer_name`) || '')
+  const [address, setAddress] = useState(() => localStorage.getItem(`store_${storeKey}_customer_address`) || '')
+  const [reference, setReference] = useState(() => localStorage.getItem(`store_${storeKey}_customer_ref`) || '')
   const [sending, setSending] = useState(false)
   const [paymentMethod, setPaymentMethod] = useState('')
   const [needsChange, setNeedsChange] = useState('')
@@ -77,9 +78,9 @@ export default function CheckoutModal({ isOpen, onClose }) {
     if (!whatsapp) { alert('O WhatsApp da loja ainda não foi configurado no Admin.'); return }
     setSending(true)
 
-    localStorage.setItem('store_name', name)
-    localStorage.setItem('store_address', address)
-    localStorage.setItem('store_ref', reference)
+    localStorage.setItem(`store_${storeKey}_customer_name`, name)
+    localStorage.setItem(`store_${storeKey}_customer_address`, address)
+    localStorage.setItem(`store_${storeKey}_customer_ref`, reference)
 
     const paymentLabel = {
       pix: 'Pix',

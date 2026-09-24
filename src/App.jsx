@@ -47,6 +47,21 @@ export default function App() {
     )
   }
 
+  if (currentStore.status === 'DISABLED' || currentStore.status === 'PAUSED') {
+    const title = currentStore.status === 'DISABLED' ? 'Loja indisponível' : 'Loja temporariamente pausada'
+    const message = currentStore.status === 'DISABLED'
+      ? 'Esta loja não está disponível no momento.'
+      : 'O atendimento desta loja está temporariamente pausado. Tente novamente mais tarde.'
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-grape-50 dark:bg-grape-950 px-6">
+        <div className="max-w-md rounded-2xl bg-white dark:bg-grape-900 p-6 text-center shadow-xl">
+          <h1 className="text-xl font-bold text-gray-900 dark:text-white">{title}</h1>
+          <p className="mt-2 text-sm text-gray-500 dark:text-grape-300">{message}</p>
+        </div>
+      </div>
+    )
+  }
+
   const filteredSections = sections.filter(
     s => activeCategory === 'all' || s.categoryId === activeCategory
   )
