@@ -112,7 +112,9 @@ export default function CheckoutModal({ isOpen, onClose }) {
       })
     } catch (err) {
       console.error('Erro ao registrar pedido no Supabase:', err)
-      alert('Não foi possível registrar o pedido no sistema. O pedido não será enviado pelo WhatsApp até que a gravação seja concluída.')
+      alert(`Não foi possível registrar o pedido no sistema. O pedido não será enviado pelo WhatsApp.
+
+Detalhe: ${err?.message || 'erro desconhecido'}`)
       setSending(false)
       return
     }

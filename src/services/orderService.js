@@ -18,45 +18,42 @@ export async function createStoreOrder({
 
   const orderPayload = {
     store_id: storeId,
-    customer_name: customerName,
-    customer_address: customerAddress,
-    customer_reference: customerReference || '',
+    customer_name: String(customerName || '').trim(),
+    customer_address: String(customerAddress || '').trim(),
+    customer_reference: String(customerReference || '').trim(),
     delivery_type: deliveryType || 'entrega',
     payment_method: paymentMethod,
-    change_for: changeFor || null,
-    observation: observation || '',
+    change_for: changeFor == null ? null : Number(changeFor),
+    observation: String(observation || '').trim(),
     subtotal: Number(subtotal || 0),
     delivery_fee: Number(deliveryFee || 0),
     total: Number(total || 0),
-    status: 'pending',
   }
 
-  const { data: order, error: orderError } = await supabase
-    .from('orders')
-    .insert(orderPayload)
-    .select('id')
-    .single()
-
-  if (orderError) throw orderError
-
   const itemRows = (items || []).map(item => ({
-    order_id: order.id,
     store_id: storeId,
     product_id: item.productId || null,
     product_name: item.name,
     quantity: Number(item.qty || 1),
     unit_price: Number(item.basePrice || 0),
-    addons: item.addonDetails || [],
+    addons: Array.isArray(item.addonDetails) ? item.addonDetails : [],
     total: Number(item.basePrice || 0) * Number(item.qty || 1),
   }))
 
-  if (itemRows.length) {
-    const { error: itemsError } = await supabase.from('order_items').insert(itemRows)
-    if (itemsError) {
-      await supabase.from('orders').delete().eq('id', order.id).eq('store_id', storeId)
-      throw itemsError
-    }
-  }
+  if (!itemRows.length) throw new Error('O pedido não possui itens.')
 
-  return order
+  // O checkout público é feito por visitantes sem login. A gravação direta
+  // em orders/order_items depende de RLS e pode ser bloqueada para anon.
+  // A RPC grava pedido + itens em uma única transação, com validação do store_id.
+  const { data, error } = await supabase.rpc('create_public_order', {
+    p_order: orderPayload,
+    p_items: itemRows,
+  })
+
+  if (error) throw error
+
+  const orderId = typeof data === 'string' ? data : data?.id
+  if (!orderId) throw new Error('O Supabase confirmou a operação, mas não retornou o ID do pedido.')
+
+  return { id: orderId }
 }
