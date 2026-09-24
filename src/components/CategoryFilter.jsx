@@ -1,15 +1,10 @@
 import { motion } from 'framer-motion'
 import { Menu, X } from 'lucide-react'
 import { useState } from 'react'
-import { CATEGORIES as LABELS_PADRAO } from '../data/products'
 
 export default function CategoryFilter({ active, onChange, sections = [] }) {
   const [open, setOpen] = useState(false)
-  const idsConhecidos = new Set(LABELS_PADRAO.map(c => c.id))
-  const extras = sections
-    .filter(s => !idsConhecidos.has(s.categoryId))
-    .map(s => ({ id: s.categoryId, label: s.title }))
-  const categories = [...LABELS_PADRAO, ...extras]
+  const categories = sections.map(s => ({ id: s.categoryId, label: s.title }))
 
   const choose = id => {
     onChange(id)
