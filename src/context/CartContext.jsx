@@ -1,19 +1,25 @@
 import { createContext, useContext, useState, useEffect, useMemo } from 'react'
-import { db, doc, getDoc } from '../supabase'
+import { supabase } from '../supabase'
+import { useCurrentStore, getCurrentStoreSlug } from '../storeContext'
 
 const CartContext = createContext()
 
 export function CartProvider({ children }) {
+  const storeSlug = getCurrentStoreSlug()
+  const { store, loading: storeLoading } = useCurrentStore()
+  const cartStorageKey = `store_cart_${storeSlug}`
+  const observationStorageKey = `store_observation_${storeSlug}`
+
   const [cart, setCart] = useState(() => {
     try {
-      return JSON.parse(localStorage.getItem('store_cart')) || []
+      return JSON.parse(localStorage.getItem(cartStorageKey)) || []
     } catch {
       return []
     }
   })
 
   const [deliveryType, setDeliveryType] = useState('entrega')
-  const [observation, setObservation] = useState(() => localStorage.getItem('store_observation') || '')
+  const [observation, setObservation] = useState(() => localStorage.getItem(observationStorageKey) || '')
   const [MINIMUM_ORDER, setMinimumOrder] = useState(0.0)
   const [storeConfig, setStoreConfig] = useState({ freeDeliveryKm: 0, pixKey: '', pixBeneficiary: '', freeDeliveryEnabled: false, openingTime: '10:00', closingTime: '22:00', storeScheduleEnabled: false })
   const [, setClockTick] = useState(0)
@@ -25,34 +31,44 @@ export function CartProvider({ children }) {
 
   useEffect(() => {
     let active = true
-    getDoc(doc(db, 'configuracoes', 'loja')).then(snap => {
-      if (active && snap.exists()) {
-        const data = snap.data()
-        if (Number(data.minimumOrder) >= 0) setMinimumOrder(Number(data.minimumOrder))
-        const freeDeliveryKm = Number(data.freeDeliveryKm)
-        const pixKey = String(data.pixKey || '').trim()
-        const pixBeneficiary = String(data.pixBeneficiary || '').trim()
-        setStoreConfig({
-          freeDeliveryKm: Number.isFinite(freeDeliveryKm) && freeDeliveryKm > 0 ? freeDeliveryKm : 0,
-          pixKey, 
-          pixBeneficiary,
-          freeDeliveryEnabled: data.freeDeliveryEnabled === true,
-          openingTime: /^([01]\d|2[0-3]):[0-5]\d$/.test(String(data.openingTime || '')) ? String(data.openingTime) : '10:00',
-          closingTime: /^([01]\d|2[0-3]):[0-5]\d$/.test(String(data.closingTime || '')) ? String(data.closingTime) : '22:00',
-          storeScheduleEnabled: data.storeScheduleEnabled === true,
-        })
-      }
-    }).catch(() => {})
+    if (storeLoading || !store?.id) return () => { active = false }
+
+    async function loadSettings() {
+      const { data, error } = await supabase
+        .from('store_settings')
+        .select('*')
+        .eq('store_id', store.id)
+        .limit(1)
+        .maybeSingle()
+
+      if (!active || error || !data) return
+      const freeDeliveryKm = Number(data.free_delivery_km ?? data.freeDeliveryKm ?? 0)
+      const pixKey = String(data.pix_key ?? data.pixKey ?? '').trim()
+      const pixBeneficiary = String(data.pix_beneficiary ?? data.pixBeneficiary ?? '').trim()
+      const minimumOrder = Number(data.minimum_order ?? data.minimumOrder ?? 0)
+      if (Number.isFinite(minimumOrder) && minimumOrder >= 0) setMinimumOrder(minimumOrder)
+      setStoreConfig({
+        freeDeliveryKm: Number.isFinite(freeDeliveryKm) && freeDeliveryKm > 0 ? freeDeliveryKm : 0,
+        pixKey,
+        pixBeneficiary,
+        freeDeliveryEnabled: (data.free_delivery_enabled ?? data.freeDeliveryEnabled) !== false,
+        openingTime: /^([01]\d|2[0-3]):[0-5]\d$/.test(String(data.opening_time ?? data.openingTime ?? '')) ? String(data.opening_time ?? data.openingTime) : '10:00',
+        closingTime: /^([01]\d|2[0-3]):[0-5]\d$/.test(String(data.closing_time ?? data.closingTime ?? '')) ? String(data.closing_time ?? data.closingTime) : '22:00',
+        storeScheduleEnabled: (data.store_schedule_enabled ?? data.storeScheduleEnabled) === true,
+      })
+    }
+
+    loadSettings().catch(() => {})
     return () => { active = false }
-  }, [])
+  }, [store?.id, storeLoading])
 
   useEffect(() => {
-    localStorage.setItem('store_cart', JSON.stringify(cart))
-  }, [cart])
+    localStorage.setItem(cartStorageKey, JSON.stringify(cart))
+  }, [cart, cartStorageKey])
 
   useEffect(() => {
-    localStorage.setItem('store_observation', observation)
-  }, [observation])
+    localStorage.setItem(observationStorageKey, observation)
+  }, [observation, observationStorageKey])
 
   const subtotal = useMemo(
     () =>
@@ -113,6 +129,8 @@ export function CartProvider({ children }) {
     <CartContext.Provider
       value={{
         cart,
+        storeId: store?.id || '',
+        storeSlug,
         deliveryType,
         setDeliveryType,
         observation,

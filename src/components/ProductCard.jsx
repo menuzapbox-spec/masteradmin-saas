@@ -98,6 +98,7 @@ export function AddonCard({ item, addons = [], index }) {
       : ''
     addItem({
       key: `${item.name}${addonText}`,
+      productId: item.id || null,
       productKey,
       name: `${item.name}${addonText}`,
       basePrice: finalPrice,

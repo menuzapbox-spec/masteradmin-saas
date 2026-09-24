@@ -132,7 +132,7 @@ export default function LandingHero({ sections, landingSettings, activeCategory,
                   <small>{item.sectionTitle}</small><h3>{item.name}</h3>
                   <div className="flex items-center justify-between gap-2">
                     <strong>{money(item.price)}</strong>
-                    <button onClick={() => addItem({key:`landing-${item.name}-${item.category}`,name:item.name,basePrice:item.price,category:item.category,imageUrl:item.imageUrl||''})}>
+                    <button onClick={() => addItem({key:`landing-${item.name}-${item.category}`,productId:item.id || null,name:item.name,basePrice:item.price,category:item.category,imageUrl:item.imageUrl||''})}>
                       + Adicionar
                     </button>
                   </div>

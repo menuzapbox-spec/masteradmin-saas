@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Minus, Plus } from 'lucide-react'
 import { useCart } from '../context/CartContext'
-import { db, collection, addDoc, doc, getDoc } from '../supabase'
+import { useCurrentStore } from '../storeContext'
+import { createStoreOrder } from '../services/orderService'
 import { usePaymentMethods } from '../hooks/usePaymentMethods'
 import { useStoreSettings } from '../data/useStoreSettings'
 
@@ -29,6 +30,7 @@ export default function CheckoutModal({ isOpen, onClose }) {
 
   const metodosHabilitados = usePaymentMethods()
   const store = useStoreSettings()
+  const { store: currentStore } = useCurrentStore()
   const whatsapp = String(store.whatsapp || store.phone || '').replace(/\D/g, '')
 
   const [name, setName] = useState(() => localStorage.getItem('store_name') || '')
@@ -86,31 +88,27 @@ export default function CheckoutModal({ isOpen, onClose }) {
       dinheiro: 'Dinheiro',
     }[paymentMethod] || paymentMethod
 
-    /* Supabase */
-    const orderData = {
-      cliente: name,
-      entrega: deliveryType,
-      endereco: address,
-      referencia: reference,
-      pagamento: paymentLabel,
-      troco: paymentMethod === 'dinheiro' && needsChange === 'sim'
-        ? `Troco para R$ ${parseFloat(changeFor).toFixed(2)} (troco: R$ ${changeAmount})`
-        : 'Sem troco',
-      observacao: observation || '',
-      total: total.toFixed(2),
-      itens: cart.map(i => ({
-        name: i.name,
-        qty: i.qty,
-        unitPrice: Number(i.basePrice || 0),
-        category: i.category,
-      })),
-      data: new Date().toISOString(),
-    }
-
+    /* Supabase / novo modelo multi-loja */
     try {
-      await addDoc(collection(db, 'pedidos'), orderData)
+      await createStoreOrder({
+        storeId: currentStore?.id,
+        customerName: name,
+        customerAddress: address,
+        customerReference: reference,
+        deliveryType,
+        paymentMethod,
+        changeFor: paymentMethod === 'dinheiro' && needsChange === 'sim' ? parseFloat(changeFor) : null,
+        observation,
+        subtotal,
+        deliveryFee,
+        total,
+        items: cart,
+      })
     } catch (err) {
-      console.error('Erro no Supabase:', err)
+      console.error('Erro ao registrar pedido no Supabase:', err)
+      alert('Não foi possível registrar o pedido no sistema. O pedido não será enviado pelo WhatsApp até que a gravação seja concluída.')
+      setSending(false)
+      return
     }
 
     /* WhatsApp message */
