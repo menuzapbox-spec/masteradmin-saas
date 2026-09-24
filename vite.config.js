@@ -17,8 +17,22 @@ const copyAdminAssets = () => ({
   }
 })
 
+// Render Static Site pode devolver 404 quando o navegador entra diretamente
+// em uma rota SPA, como /loja/minha-loja. Geramos uma cópia do index.html
+// como 404.html para que o próprio React assuma a rota e resolva o slug.
+// Não altera a lógica do catálogo, do Admin ou do Supabase.
+const spaFallback = () => ({
+  name: 'spa-fallback',
+  closeBundle() {
+    cpSync(
+      resolve(process.cwd(), 'dist/index.html'),
+      resolve(process.cwd(), 'dist/404.html')
+    )
+  }
+})
+
 export default defineConfig({
-  plugins: [react(), copyAdminAssets()],
+  plugins: [react(), copyAdminAssets(), spaFallback()],
   build: {
     rollupOptions: {
       input: {
