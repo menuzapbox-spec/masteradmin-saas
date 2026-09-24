@@ -26,6 +26,7 @@ export default function CheckoutModal({ isOpen, onClose }) {
     pixKey,
     pixBeneficiary,
     FREE_DELIVERY_ENABLED,
+    STORE_OPEN,
   } = useCart()
 
   const metodosHabilitados = usePaymentMethods()
@@ -52,6 +53,10 @@ export default function CheckoutModal({ isOpen, onClose }) {
   const handleSubmit = async e => {
     e.preventDefault()
     if (cart.length === 0) return
+    if (!STORE_OPEN) {
+      alert('Os pedidos estão fechados no momento. Tente novamente dentro do horário de atendimento.')
+      return
+    }
     if (isBelowMinimum) {
       alert(`O pedido mínimo é de R$ ${MINIMUM_ORDER.toFixed(2)}. Adicione mais itens para continuar.`)
       return
