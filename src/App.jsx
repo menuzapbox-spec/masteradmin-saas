@@ -12,8 +12,10 @@ import CustomerNotice from './components/CustomerNotice'
 import { useCatalog } from './data/useCatalog'
 import { useLandingSettings } from './data/useLandingSettings'
 import { useStoreSettings } from './data/useStoreSettings'
+import { useCurrentStore } from './storeContext'
 
 export default function App() {
+  const { store: currentStore, loading: storeLoading, error: storeError } = useCurrentStore()
   const sections = useCatalog()
   const landingSettings = useLandingSettings()
   const { DELIVERY_RADIUS_KM, FREE_DELIVERY_ENABLED, STORE_OPEN, storeOpeningTime, storeClosingTime, storeScheduleEnabled } = useCart()
@@ -22,6 +24,28 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('')
   const [checkoutOpen, setCheckoutOpen] = useState(false)
   const [mobileCartOpen, setMobileCartOpen] = useState(false)
+
+  if (storeLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-grape-50 dark:bg-grape-950 px-6">
+        <div className="text-center">
+          <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-4 border-grape-200 border-t-grape-600" />
+          <p className="font-semibold text-gray-700 dark:text-grape-100">Carregando loja...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (storeError || !currentStore) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-grape-50 dark:bg-grape-950 px-6">
+        <div className="max-w-md rounded-2xl bg-white dark:bg-grape-900 p-6 text-center shadow-xl">
+          <h1 className="text-xl font-bold text-gray-900 dark:text-white">Loja não encontrada</h1>
+          <p className="mt-2 text-sm text-gray-500 dark:text-grape-300">Verifique o endereço da loja e tente novamente.</p>
+        </div>
+      </div>
+    )
+  }
 
   const filteredSections = sections.filter(
     s => activeCategory === 'all' || s.categoryId === activeCategory

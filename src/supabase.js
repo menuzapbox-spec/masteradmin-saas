@@ -176,7 +176,7 @@ export async function sendPasswordResetEmail(_auth, email) {
   // Em produção, o Admin deste projeto está publicado neste endereço.
   // VITE_ADMIN_URL continua tendo prioridade caso o domínio seja alterado.
   const configuredAdminUrl = import.meta.env.VITE_ADMIN_URL?.trim()
-  const baseUrl = configuredAdminUrl || 'https://cardapiogorilasorvetessupabase.onrender.com'
+  const baseUrl = configuredAdminUrl || window.location.origin
   const redirectUrl = new URL('/admin-1.html', baseUrl)
   redirectUrl.hash = ''
   redirectUrl.search = ''
@@ -193,4 +193,23 @@ export async function signOut(_auth) {
 export async function updatePassword(_auth, password) {
   const result = await supabase.auth.updateUser({ password })
   if (result.error) throw result.error
+}
+
+// --- Multi-tenant helpers (novo SaaS) ---
+export async function getStoreBySlug(slug) {
+  const cleanSlug = String(slug || '').trim()
+  if (!cleanSlug) return null
+  const { data, error } = await supabase.from('stores').select('*').eq('slug', cleanSlug).limit(1).maybeSingle()
+  if (error) throw error
+  return data || null
+}
+
+export async function getCurrentUserProfile() {
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+  if (sessionError) throw sessionError
+  const user = sessionData.session?.user
+  if (!user) return null
+  const { data, error } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle()
+  if (error) throw error
+  return data || null
 }
