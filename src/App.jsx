@@ -18,7 +18,7 @@ export default function App() {
   const { store: currentStore, loading: storeLoading, error: storeError } = useCurrentStore()
   const sections = useCatalog()
   const landingSettings = useLandingSettings()
-  const { DELIVERY_RADIUS_KM, FREE_DELIVERY_ENABLED, STORE_OPEN, storeOpeningTime, storeClosingTime, storeScheduleEnabled } = useCart()
+  const { DELIVERY_RADIUS_KM, FREE_DELIVERY_ENABLED, deliveryFee, STORE_OPEN, storeOpeningTime, storeClosingTime, storeScheduleEnabled } = useCart()
   const store = useStoreSettings()
   const [activeCategory, setActiveCategory] = useState('all')
   const [searchQuery, setSearchQuery] = useState('')
@@ -109,7 +109,7 @@ export default function App() {
                 {store.storeName} — {store.tagline}
               </p>
               <p className="text-sm text-gray-400 mt-1">
-                {store.address || store.city || 'Endereço da loja não configurado'} {FREE_DELIVERY_ENABLED ? `• Frete grátis até ${DELIVERY_RADIUS_KM} km` : '• Frete a confirmar'}
+                {store.address || store.city || 'Endereço da loja não configurado'} {FREE_DELIVERY_ENABLED ? (DELIVERY_RADIUS_KM > 0 ? `• Frete grátis até ${DELIVERY_RADIUS_KM} km` : '• Frete grátis') : `• Frete R$ ${deliveryFee.toFixed(2)}`}
               </p>
               <p className="text-sm text-gray-400">WhatsApp: {store.whatsapp || store.phone || 'Não configurado'}</p>
               <p className="text-xs mt-3 text-gray-300 dark:text-grape-700">2026 - Todos os direitos reservados</p>

@@ -5,7 +5,7 @@ import { useStoreSettings } from '../data/useStoreSettings'
 
 export default function Header() {
   const [dark, setDark] = useTheme()
-  const { DELIVERY_RADIUS_KM, FREE_DELIVERY_ENABLED, STORE_OPEN, storeOpeningTime, storeClosingTime, storeScheduleEnabled } = useCart()
+  const { DELIVERY_RADIUS_KM, FREE_DELIVERY_ENABLED, deliveryFee, STORE_OPEN, storeOpeningTime, storeClosingTime, storeScheduleEnabled } = useCart()
   const store = useStoreSettings()
   const initials = store.storeName.split(/\s+/).filter(Boolean).slice(0,2).map(x => x[0]).join('').toUpperCase() || 'LO'
 
@@ -25,7 +25,7 @@ export default function Header() {
               {STORE_OPEN ? `Aberto até ${storeClosingTime}` : `Abre às ${storeOpeningTime}`}
             </span>
           )}
-          <span>{FREE_DELIVERY_ENABLED ? `Frete grátis até ${DELIVERY_RADIUS_KM} km` : 'Consulte o frete'}</span>
+          <span>{FREE_DELIVERY_ENABLED ? (DELIVERY_RADIUS_KM > 0 ? `Frete grátis até ${DELIVERY_RADIUS_KM} km` : 'Frete grátis') : `Frete: R$ ${deliveryFee.toFixed(2)}`}</span>
         </div>
         <div className="menu-99-actions">
           {store.phone && <a href={`tel:${store.phone.replace(/\D/g, '')}`} aria-label="Ligar para a loja"><Phone size={18} /></a>}

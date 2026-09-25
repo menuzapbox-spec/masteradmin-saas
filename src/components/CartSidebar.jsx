@@ -3,7 +3,7 @@ import { Minus, Plus, ShoppingBag, Trash2 } from 'lucide-react'
 import { useCart } from '../context/CartContext'
 
 export default function CartSidebar({ onCheckout }) {
-  const { cart, subtotal, deliveryFee, total, totalItems, updateQty, removeItem, MINIMUM_ORDER, isBelowMinimum, observation, setObservation, STORE_OPEN, storeOpeningTime, storeClosingTime, storeScheduleEnabled } = useCart()
+  const { cart, subtotal, deliveryFee, total, totalItems, updateQty, removeItem, MINIMUM_ORDER, isBelowMinimum, observation, setObservation, STORE_OPEN, storeOpeningTime, storeClosingTime, storeScheduleEnabled, FREE_DELIVERY_ENABLED } = useCart()
 
   return (
     <aside className="flex flex-col h-screen bg-white dark:bg-grape-900 border-l border-grape-200 dark:border-grape-800">
@@ -59,7 +59,7 @@ export default function CartSidebar({ onCheckout }) {
           </div>
           <div className="flex justify-between text-sm text-gray-500 dark:text-grape-400">
             <span>Entrega</span>
-            <span className="font-semibold text-green-600 dark:text-green-400">Grátis</span>
+            <span className={`font-semibold ${FREE_DELIVERY_ENABLED ? 'text-green-600 dark:text-green-400' : 'text-gray-700 dark:text-grape-200'}`}>{FREE_DELIVERY_ENABLED ? 'Grátis' : `R$ ${deliveryFee.toFixed(2)}`}</span>
           </div>
           <div className="flex justify-between font-display text-xl text-grape-700 dark:text-grape-300 pt-2 border-t border-grape-200 dark:border-grape-700">
             <span>Total</span>

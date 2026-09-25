@@ -6,6 +6,7 @@ import { useCurrentStore } from '../storeContext'
 import { createStoreOrder } from '../services/orderService'
 import { usePaymentMethods } from '../hooks/usePaymentMethods'
 import { useStoreSettings } from '../data/useStoreSettings'
+import { supabase } from '../supabase'
 
 
 export default function CheckoutModal({ isOpen, onClose }) {
@@ -32,7 +33,7 @@ export default function CheckoutModal({ isOpen, onClose }) {
   const metodosHabilitados = usePaymentMethods()
   const store = useStoreSettings()
   const { store: currentStore } = useCurrentStore()
-  const whatsapp = String(store.whatsapp || '').replace(/\D/g, '')
+  const [pixCopied, setPixCopied] = useState(false)
   const storeKey = currentStore?.id || 'loja'
 
   const [name, setName] = useState(() => localStorage.getItem(`store_${storeKey}_customer_name`) || '')
@@ -49,6 +50,29 @@ export default function CheckoutModal({ isOpen, onClose }) {
     if (!isNaN(val) && val > total) return (val - total).toFixed(2)
     return null
   })()
+
+  const loadFreshStoreContact = async () => {
+    const id = currentStore?.id
+    if (!id) return { whatsapp: '', pixKey: '', pixBeneficiary: '' }
+    const { data: settingsData } = await supabase.from('store_settings').select('whatsapp,pix_key,pix_beneficiary').eq('store_id', id).maybeSingle()
+    const { data: storeData } = await supabase.from('stores').select('whatsapp,phone').eq('id', id).maybeSingle()
+    return {
+      whatsapp: String(settingsData?.whatsapp || storeData?.whatsapp || '').replace(/\D/g, ''),
+      pixKey: String(settingsData?.pix_key || pixKey || '').trim(),
+      pixBeneficiary: String(settingsData?.pix_beneficiary || pixBeneficiary || '').trim(),
+    }
+  }
+
+  const copyPixKey = async () => {
+    if (!pixKey) return
+    try {
+      await navigator.clipboard.writeText(pixKey)
+      setPixCopied(true)
+      setTimeout(() => setPixCopied(false), 1800)
+    } catch {
+      alert('Não foi possível copiar automaticamente. Toque e segure a chave para copiar.')
+    }
+  }
 
   const handleSubmit = async e => {
     e.preventDefault()
@@ -80,8 +104,12 @@ export default function CheckoutModal({ isOpen, onClose }) {
         return
       }
     }
-    if (!whatsapp) { alert('O WhatsApp da loja ainda não foi configurado no Admin.'); return }
     setSending(true)
+    const fresh = await loadFreshStoreContact()
+    const targetWhatsapp = fresh.whatsapp
+    const targetPixKey = fresh.pixKey
+    const targetPixBeneficiary = fresh.pixBeneficiary
+    if (!targetWhatsapp) { alert('O WhatsApp desta loja ainda não foi configurado no Admin.'); setSending(false); return }
 
     localStorage.setItem(`store_${storeKey}_customer_name`, name)
     localStorage.setItem(`store_${storeKey}_customer_address`, address)
@@ -124,7 +152,7 @@ Detalhe: ${err?.message || 'erro desconhecido'}`)
     msg += `*Cliente:* ${name}\n`
     msg += `*Tipo:* Entrega em Domicílio\n`
     msg += `*End:* ${address}\n`
-    msg += FREE_DELIVERY_ENABLED ? `*Frete:* Grátis (raio de até ${DELIVERY_RADIUS_KM} km)\n` : `*Frete:* A confirmar pelo WhatsApp\n`
+    msg += FREE_DELIVERY_ENABLED ? `*Frete:* Grátis${DELIVERY_RADIUS_KM > 0 ? ` (raio de até ${DELIVERY_RADIUS_KM} km)` : ''}\n` : `*Frete:* R$ ${deliveryFee.toFixed(2)}\n`
     if (reference) msg += `*Ref:* ${reference}\n`
     msg += `*Pagamento:* ${paymentLabel}\n`
     if (paymentMethod === 'dinheiro') {
@@ -142,17 +170,16 @@ Detalhe: ${err?.message || 'erro desconhecido'}`)
       msg += `- ${item.qty}x ${item.name} -> R$ ${(price * item.qty).toFixed(2)}\n`
     })
     msg += `\n*SUBTOTAL:* R$ ${subtotal.toFixed(2)}`
-    msg += FREE_DELIVERY_ENABLED ? `\n*FRETE:* Grátis` : `\n*FRETE:* A confirmar`
+    msg += FREE_DELIVERY_ENABLED ? `\n*FRETE:* Grátis` : `\n*FRETE:* R$ ${deliveryFee.toFixed(2)}`
     msg += `\n*TOTAL:* R$ ${total.toFixed(2)}`
     if (paymentMethod === 'pix') {
       msg += `\n\n*PAGAMENTO VIA PIX*`
-      msg += `\n*Chave Pix:* ${pixKey}`
-      if (pixBeneficiary) msg += `\n*Beneficiário:* ${pixBeneficiary}`
+      msg += `\n*Chave Pix:* ${targetPixKey}`
+      if (targetPixBeneficiary) msg += `\n*Beneficiário:* ${targetPixBeneficiary}`
       msg += `\nCopie e cole a chave acima no seu banco de preferência para realizar o pagamento.`
     }
 
-    if (!whatsapp) { alert('O WhatsApp da loja ainda não foi configurado no Admin.'); setSending(false); return }
-    window.open(`https://wa.me/${whatsapp}?text=${encodeURIComponent(msg)}`, '_blank')
+    window.open(`https://wa.me/${targetWhatsapp}?text=${encodeURIComponent(msg)}`, '_blank')
 
     clearCart()
     setObservation('')
@@ -281,8 +308,8 @@ Detalhe: ${err?.message || 'erro desconhecido'}`)
                   Aviso de Frete:
                 </strong>{' '}
                 {FREE_DELIVERY_ENABLED
-                  ? <>Entrega em domicílio <strong>grátis</strong> para distâncias de até <strong>{DELIVERY_RADIUS_KM} km</strong> da loja.</>
-                  : <>O frete será <strong>confirmado pelo WhatsApp</strong> conforme a região.</>
+                  ? <>{DELIVERY_RADIUS_KM > 0 ? <>Entrega em domicílio <strong>grátis</strong> para distâncias de até <strong>{DELIVERY_RADIUS_KM} km</strong> da loja.</> : <>Entrega em domicílio <strong>grátis</strong>.</>}</>
+                  : <>Será acrescentado ao pedido um frete fixo de <strong>R$ {deliveryFee.toFixed(2)}</strong>.</>
                 }{' '}
                 Pedido mínimo de <strong>R$ {MINIMUM_ORDER.toFixed(2)}</strong>.
               </div>
@@ -360,6 +387,14 @@ Detalhe: ${err?.message || 'erro desconhecido'}`)
                   <p className="mt-1 text-xs leading-relaxed text-teal-700 dark:text-teal-300">
                     Ao confirmar, seu pedido será enviado pelo WhatsApp. A chave Pix aparecerá na mensagem para você copiar e colar diretamente no seu banco de preferência.
                   </p>
+                  {pixKey && (
+                    <div className="mt-3 flex flex-col items-center gap-2">
+                      <div className="text-xs font-bold text-teal-800 dark:text-teal-200 break-all">Chave Pix: {pixKey}</div>
+                      <button type="button" onClick={copyPixKey} className="rounded-lg bg-teal-600 px-4 py-2 text-xs font-extrabold text-white hover:bg-teal-700">
+                        {pixCopied ? '✓ Chave Pix copiada' : 'Copiar chave Pix'}
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
 
