@@ -32,7 +32,7 @@ export default function CheckoutModal({ isOpen, onClose }) {
   const metodosHabilitados = usePaymentMethods()
   const store = useStoreSettings()
   const { store: currentStore } = useCurrentStore()
-  const whatsapp = String(currentStore?.whatsapp || store.whatsapp || currentStore?.phone || store.phone || '').replace(/\D/g, '')
+  const whatsapp = String(store.whatsapp || '').replace(/\D/g, '')
   const storeKey = currentStore?.id || 'loja'
 
   const [name, setName] = useState(() => localStorage.getItem(`store_${storeKey}_customer_name`) || '')
