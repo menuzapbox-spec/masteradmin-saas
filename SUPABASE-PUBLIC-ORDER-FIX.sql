@@ -1,3 +1,6 @@
+-- Compatibilidade do checkout: algumas versões anteriores do schema não tinham customer_reference.
+alter table public.orders add column if not exists customer_reference text;
+
 -- CORREÇÃO DO CHECKOUT PÚBLICO MULTI-LOJA
 --
 -- Esta migration é necessária porque o cliente final não faz login no Supabase.

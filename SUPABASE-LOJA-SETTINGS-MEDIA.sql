@@ -20,6 +20,11 @@ where not exists (
   select 1 from public.store_settings ss where ss.store_id = s.id
 );
 
+-- Garante o bucket público de imagens do catálogo.
+insert into storage.buckets (id, name, public)
+values ('cardapio', 'cardapio', true)
+on conflict (id) do update set public = excluded.public;
+
 -- Storage: cada loja grava suas fotos em stores/{STORE_ID}/...
 -- A leitura continua pública; escrita fica limitada ao Super Admin ou ao
 -- administrador da própria loja.
