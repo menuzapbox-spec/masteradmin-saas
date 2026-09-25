@@ -1,11 +1,33 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { supabase } from '../supabase'
+import { useCurrentStore } from '../storeContext'
 
 const PADRAO = { pix: true, debito: true, credito: true, dinheiro: true }
 
-// Phase 6: o checkout não consulta mais tabelas legadas.
-// A gestão específica de meios de pagamento será ligada ao novo modelo
-// multi-loja em uma fase própria, sem quebrar o checkout atual.
 export function usePaymentMethods() {
-  const [metodos] = useState(PADRAO)
+  const { store, loading } = useCurrentStore()
+  const [metodos, setMetodos] = useState(PADRAO)
+
+  useEffect(() => {
+    let active = true
+    async function load() {
+      if (loading || !store?.id) return
+      const { data, error } = await supabase
+        .from('store_settings')
+        .select('payment_methods')
+        .eq('store_id', store.id)
+        .limit(1)
+        .maybeSingle()
+      if (!active) return
+      if (error || !data?.payment_methods) {
+        setMetodos(PADRAO)
+        return
+      }
+      setMetodos({ ...PADRAO, ...data.payment_methods })
+    }
+    load()
+    return () => { active = false }
+  }, [store?.id, loading])
+
   return metodos
 }

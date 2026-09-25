@@ -151,7 +151,8 @@ export async function uploadImage(file, folder = 'geral') {
   if (!file.type.startsWith('image/')) throw new Error('Selecione uma imagem válida.')
   if (file.size > 4 * 1024 * 1024) throw new Error('A imagem deve ter no máximo 4 MB.')
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '-')
-  const path = `cardapio/${folder}/${Date.now()}-${Math.random().toString(36).slice(2)}-${safeName}`
+  const cleanFolder = String(folder || 'geral').replace(/^\/+|\/+$/g, '')
+  const path = `${cleanFolder}/${Date.now()}-${Math.random().toString(36).slice(2)}-${safeName}`
   const { error } = await supabase.storage.from('cardapio').upload(path, file, { contentType: file.type, upsert: false })
   if (error) throw error
   const { data } = supabase.storage.from('cardapio').getPublicUrl(path)

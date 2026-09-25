@@ -34,7 +34,7 @@ function normalizeStore(store, extra = {}) {
     tagline: clean(d.tagline) || DEFAULT_STORE_SETTINGS.tagline,
     subtitle: clean(d.subtitle) || DEFAULT_STORE_SETTINGS.subtitle,
     phone: clean(d.phone),
-    whatsapp: clean(d.whatsapp),
+    whatsapp: clean(d.whatsapp || store?.whatsapp || store?.phone),
     address: clean(d.address),
     city: clean(d.city),
     logoUrl: clean(d.logo_url || d.logoUrl),
