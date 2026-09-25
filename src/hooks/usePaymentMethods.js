@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../supabase'
 import { useCurrentStore } from '../storeContext'
 
-const PADRAO = { pix: true, debito: true, credito: true, dinheiro: true }
+const PADRAO = { pix: true, pix_qrcode: false, maquininha: false, debito: true, credito: true, dinheiro: true }
 
 export function usePaymentMethods() {
   const { store, loading } = useCurrentStore()

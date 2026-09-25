@@ -33,7 +33,6 @@ export default function CheckoutModal({ isOpen, onClose }) {
   const metodosHabilitados = usePaymentMethods()
   const store = useStoreSettings()
   const { store: currentStore } = useCurrentStore()
-  const [pixCopied, setPixCopied] = useState(false)
   const storeKey = currentStore?.id || 'loja'
 
   const [name, setName] = useState(() => localStorage.getItem(`store_${storeKey}_customer_name`) || '')
@@ -63,16 +62,6 @@ export default function CheckoutModal({ isOpen, onClose }) {
     }
   }
 
-  const copyPixKey = async () => {
-    if (!pixKey) return
-    try {
-      await navigator.clipboard.writeText(pixKey)
-      setPixCopied(true)
-      setTimeout(() => setPixCopied(false), 1800)
-    } catch {
-      alert('Não foi possível copiar automaticamente. Toque e segure a chave para copiar.')
-    }
-  }
 
   const handleSubmit = async e => {
     e.preventDefault()
@@ -117,6 +106,8 @@ export default function CheckoutModal({ isOpen, onClose }) {
 
     const paymentLabel = {
       pix: 'Pix',
+      pix_qrcode: 'Pix QR Code',
+      maquininha: 'Trazer maquininha',
       debito: 'Cartão de Débito',
       credito: 'Cartão de Crédito',
       dinheiro: 'Dinheiro',
@@ -172,9 +163,9 @@ Detalhe: ${err?.message || 'erro desconhecido'}`)
     msg += `\n*SUBTOTAL:* R$ ${subtotal.toFixed(2)}`
     msg += FREE_DELIVERY_ENABLED ? `\n*FRETE:* Grátis` : `\n*FRETE:* R$ ${deliveryFee.toFixed(2)}`
     msg += `\n*TOTAL:* R$ ${total.toFixed(2)}`
-    if (paymentMethod === 'pix') {
-      msg += `\n\n*PAGAMENTO VIA PIX*`
-      msg += `\n*Chave Pix:* ${targetPixKey}`
+    if (paymentMethod === 'pix' || paymentMethod === 'pix_qrcode') {
+      msg += `\n\n*PAGAMENTO VIA ${paymentMethod === 'pix_qrcode' ? 'PIX QR CODE' : 'PIX'}*`
+      msg += `\n*Chave Pix:* ${targetPixKey || 'Não informada'}`
       if (targetPixBeneficiary) msg += `\n*Beneficiário:* ${targetPixBeneficiary}`
       msg += `\nCopie e cole a chave acima no seu banco de preferência para realizar o pagamento.`
     }
@@ -347,6 +338,8 @@ Detalhe: ${err?.message || 'erro desconhecido'}`)
                 <div className="grid grid-cols-2 gap-2">
                   {[
                     { value: 'pix', label: 'Pix', sub: null },
+                    { value: 'pix_qrcode', label: 'Pix QR Code', sub: 'Pagamento por QR Code' },
+                    { value: 'maquininha', label: 'Trazer maquininha', sub: 'Pagamento na entrega' },
                     { value: 'debito', label: 'Débito', sub: 'Trazer a máquina de cartão' },
                     { value: 'credito', label: 'Crédito', sub: 'Trazer a máquina de cartão' },
                     { value: 'dinheiro', label: 'Dinheiro', sub: '' },
@@ -379,22 +372,14 @@ Detalhe: ${err?.message || 'erro desconhecido'}`)
               </div>
 
               {/* Pix - confirmação pelo WhatsApp */}
-              {paymentMethod === 'pix' && (
+              {(paymentMethod === 'pix' || paymentMethod === 'pix_qrcode') && (
                 <div className="rounded-xl border border-teal-300 dark:border-teal-700 bg-teal-50 dark:bg-teal-600/10 p-4 text-center">
                   <p className="text-sm font-bold text-teal-800 dark:text-teal-200">
-                    Pagamento via Pix
+                    {paymentMethod === 'pix_qrcode' ? 'Pagamento via Pix QR Code' : 'Pagamento via Pix'}
                   </p>
                   <p className="mt-1 text-xs leading-relaxed text-teal-700 dark:text-teal-300">
-                    Ao confirmar, seu pedido será enviado pelo WhatsApp. A chave Pix aparecerá na mensagem para você copiar e colar diretamente no seu banco de preferência.
+                    Ao confirmar, seu pedido será enviado pelo WhatsApp. A chave Pix ficará disponível na mensagem para você copiar e colar diretamente no banco de sua preferência.
                   </p>
-                  {pixKey && (
-                    <div className="mt-3 flex flex-col items-center gap-2">
-                      <div className="text-xs font-bold text-teal-800 dark:text-teal-200 break-all">Chave Pix: {pixKey}</div>
-                      <button type="button" onClick={copyPixKey} className="rounded-lg bg-teal-600 px-4 py-2 text-xs font-extrabold text-white hover:bg-teal-700">
-                        {pixCopied ? '✓ Chave Pix copiada' : 'Copiar chave Pix'}
-                      </button>
-                    </div>
-                  )}
                 </div>
               )}
 
