@@ -88,3 +88,107 @@ $$;
 
 revoke all on function public.create_store_owner(uuid,text,text) from public;
 grant execute on function public.create_store_owner(uuid,text,text) to authenticated;
+
+-- Phase 19: exclusão da loja + acesso do lojista pelo Super Admin.
+-- Execute este bloco UMA vez no mesmo projeto Supabase.
+-- A exclusão exige duas confirmações no painel e só pode ser executada por super_admin.
+
+create or replace function public.delete_store_and_owner(
+  p_store_id uuid
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, auth, extensions
+as $$
+declare
+  caller_role public.user_role;
+  store_name text;
+  owner_ids uuid[];
+  owner_email text;
+  uid uuid;
+begin
+  select role into caller_role
+  from public.profiles
+  where id = auth.uid();
+
+  if caller_role is distinct from 'super_admin'::public.user_role then
+    raise exception 'Somente o Super Admin pode excluir lojas.' using errcode = '42501';
+  end if;
+
+  select name into store_name
+  from public.stores
+  where id = p_store_id;
+
+  if store_name is null then
+    raise exception 'Loja não encontrada.';
+  end if;
+
+  select coalesce(array_agg(id), '{}') into owner_ids
+  from public.profiles
+  where store_id = p_store_id
+    and role in ('owner'::public.user_role, 'staff'::public.user_role);
+
+  -- Guarda o primeiro e-mail para retorno ao painel.
+  if coalesce(array_length(owner_ids,1),0) > 0 then
+    select email into owner_email from auth.users where id = owner_ids[1];
+  end if;
+
+  -- Remove itens de pedidos antes dos pedidos, caso a instalação não esteja
+  -- usando ON DELETE CASCADE nessa relação.
+  if to_regclass('public.order_items') is not null
+     and to_regclass('public.orders') is not null then
+    execute 'delete from public.order_items where order_id in (select id from public.orders where store_id = $1)'
+      using p_store_id;
+  end if;
+
+  if to_regclass('public.orders') is not null then
+    execute 'delete from public.orders where store_id = $1' using p_store_id;
+  end if;
+
+  if to_regclass('public.customers') is not null then
+    execute 'delete from public.customers where store_id = $1' using p_store_id;
+  end if;
+
+  if to_regclass('public.addons') is not null then
+    execute 'delete from public.addons where store_id = $1' using p_store_id;
+  end if;
+
+  if to_regclass('public.products') is not null then
+    execute 'delete from public.products where store_id = $1' using p_store_id;
+  end if;
+
+  if to_regclass('public.categories') is not null then
+    execute 'delete from public.categories where store_id = $1' using p_store_id;
+  end if;
+
+  if to_regclass('public.store_settings') is not null then
+    execute 'delete from public.store_settings where store_id = $1' using p_store_id;
+  end if;
+
+  if to_regclass('public.store_subscriptions') is not null then
+    execute 'delete from public.store_subscriptions where store_id = $1' using p_store_id;
+  end if;
+
+  -- A loja é removida antes dos usuários. Se houver FKs com CASCADE,
+  -- os profiles vinculados também serão removidos.
+  delete from public.stores where id = p_store_id;
+
+  -- Por último, remove os usuários do Auth capturados antes da exclusão.
+  -- Isso libera o e-mail para um novo cadastro.
+  if owner_ids is not null then
+    foreach uid in array owner_ids loop
+      delete from auth.users where id = uid;
+    end loop;
+  end if;
+
+  return jsonb_build_object(
+    'store_id', p_store_id,
+    'store_name', store_name,
+    'email', owner_email
+  );
+end;
+$$;
+
+revoke all on function public.delete_store_and_owner(uuid) from public;
+grant execute on function public.delete_store_and_owner(uuid) to authenticated;
